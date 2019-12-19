@@ -9,8 +9,7 @@ kernel_Sepconv_updateOutput = '''
 		const float* vertical,
 		const float* horizontal,
 		float* output
-) { for (int intIndex = (blockIdx.x * blockDim.x) + threadIdx.x; intIndex < n; intIndex += blockDim.x * gridDim.x)
-	{
+	) { for (int intIndex = (blockIdx.x * blockDim.x) + threadIdx.x; intIndex < n; intIndex += blockDim.x * gridDim.x) {
 		float dblOutput = 0.0;
 
 		const int intSample = ( intIndex / SIZE_3(output) / SIZE_2(output) / SIZE_1(output) ) % SIZE_0(output);
@@ -18,16 +17,14 @@ kernel_Sepconv_updateOutput = '''
 		const int intY      = ( intIndex / SIZE_3(output)                                   ) % SIZE_2(output);
 		const int intX      = ( intIndex                                                    ) % SIZE_3(output);
 
-		for (int intFilterY = 0; intFilterY < SIZE_1(vertical); intFilterY += 1)
-		{
-			for (int intFilterX = 0; intFilterX < SIZE_1(horizontal); intFilterX += 1)
-			{
+		for (int intFilterY = 0; intFilterY < SIZE_1(vertical); intFilterY += 1) {
+			for (int intFilterX = 0; intFilterX < SIZE_1(horizontal); intFilterX += 1) {
 				dblOutput += VALUE_4(input, intSample, intDepth, intY + intFilterY, intX + intFilterX) * VALUE_4(vertical, intSample, intFilterY, intY, intX) * VALUE_4(horizontal, intSample, intFilterX, intY, intX);
 			}
 		}
+
 		output[intIndex] = dblOutput;
-	}
-	}
+	} }
 '''
 
 def cupy_kernel(strFunction, objectVariables):
@@ -81,20 +78,21 @@ class FunctionSepconv(torch.autograd.Function):
 	def forward(self, input, vertical, horizontal):
 		self.save_for_backward(input, vertical, horizontal)
 
-		intSample = input.size(0)##すでに128の倍数処理がされている1
-		intInputDepth = input.size(1)#3
-		intInputHeight = input.size(2)#512
-		intInputWidth = input.size(3)#640
-		intFilterSize = min(vertical.size(1), horizontal.size(1))#51
-		intOutputHeight = min(vertical.size(2), horizontal.size(2))#512
-		intOutputWidth = min(vertical.size(3), horizontal.size(3))#640
+		intSample = input.size(0)
+		intInputDepth = input.size(1)
+		intInputHeight = input.size(2)
+		intInputWidth = input.size(3)
+		intFilterSize = min(vertical.size(1), horizontal.size(1))
+		intOutputHeight = min(vertical.size(2), horizontal.size(2))
+		intOutputWidth = min(vertical.size(3), horizontal.size(3))
 
 		assert(intInputHeight - intFilterSize == intOutputHeight - 1)
 		assert(intInputWidth - intFilterSize == intOutputWidth - 1)
 
 		assert(input.is_contiguous() == True)
 		assert(vertical.is_contiguous() == True)
-		assert(horizontal.is_contiguous() == True)###1x51x512x640
+		assert(horizontal.is_contiguous() == True)
+
 		output = input.new_zeros(intSample, intInputDepth, intOutputHeight, intOutputWidth)
 
 		if input.is_cuda == True:
@@ -115,7 +113,7 @@ class FunctionSepconv(torch.autograd.Function):
 				stream=Stream
 			)
 
-		elif input.is_cuda == False:
+		elif first.is_cuda == False:
 			raise NotImplementedError()
 
 		# end
